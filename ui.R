@@ -1,8 +1,8 @@
 
 theme <- bs_theme(
   version = 5,
-  bootswatch = NULL,   # avoid canned themes if you want professional
-  primary = "#1f2937", # deep slate
+  bootswatch = NULL,  
+  primary = "#1f2937", 
   secondary = "#6b7280",
   
   bg = "#f1f5f9",
@@ -14,9 +14,6 @@ theme <- bs_theme(
 )
 
 
-
-# let percent = Math.min((counter / totalCount) * 100, 100).toFixed(2);
-# 'Loading ' +  percent + '%';
 ui <- page_fluid(
 	shinyjs::useShinyjs(),
 	
@@ -167,7 +164,7 @@ ui <- page_fluid(
 		sidebar = sidebar(
 		  width = 380,
 		  h5(strong("Insert up to 2000 peptides")),
-		  radioButtons("searchtype", choices = c("Hamming", "Grantham", "Smaller matching Peptides", "Larger containing peptides"), inline = T, label = "Search type" ),
+		  radioButtons("searchtype", choices = c("Hamming", "Grantham", "Exact match", "Smaller matching Peptides", "Larger containing peptides"), inline = T, label = "Search type" ),
 		  checkboxInput("inclpred", label= "Include predicted", value = T),
 		  textAreaInput("inppeps", "Insert petides", height="400px"),
 			  layout_columns(
@@ -175,14 +172,54 @@ ui <- page_fluid(
 				actionButton("search", "Search", class="btn btn-success btn-sm btn-block"),
 				actionButton("clear", "Clear", class="btn btn-primary btn-sm btn-block"),
 				actionButton("upld", "Upload", class="btn btn-info btn-sm btn-block")
+			  ),
+			  layout_columns(
+				col_widths = c(12),
+				actionButton("showbiodist", "Show distribution of Found peptides", class="btn btn-warning btn-sm btn-block"),
 			  )
+		),
+		
+		
+		
+		card(
+		  style = "resize:vertical;",
+		  id="filteringopts",
+		  style="display:none;", 
+		  card_header("Filtering options"),
+		  card_body(
+			layout_columns(
+				col_widths = c(4, 4, 4),
+				#all
+				selectizeInput(inputId="biofunctionfilter",label = "Biofunction", multiple = T, choices = allbionames),
+				sliderInput("pepsizefilter", "Peptide length", min = 2, max = 150, value = c(2,150), step = 1),
+				checkboxInput("allowpred", label= "Allow predicted", value = T),
+			),
+			div(id="divboth",
+				layout_columns(
+					
+					col_widths = c(4, 4, 4),
+					# both
+					sliderInput("match", "Match interval", min = 0, max = 150, value = c(0,150), step = 1),
+					#grantham
+					sliderInput("distanceval", "Distance interval", min = 0, max = 100, value = c(0,100), step = 1),
+					sliderInput("prcent_of_worst", "Percent_of_worst interval", min = 0, max = 1, value = c(0,1), step = 0.01),
+					#hamming
+					sliderInput("score", "Score interval", min = 0, max = 1, value = c(0,1), step = 0.01),
+				)
+			), 
+			layout_columns(
+					col_widths = c(4, 4, 4),
+					actionButton("apply_filter", "Apply filter", class="btn btn-info btn-sm btn-block"),
+					actionButton("clearfilter", "Clear filter", class="btn btn-primary btn-sm btn-block")
+			)
+		  )
 		),
 		
 		card(
 		  height = 730,
 		  style = "resize:vertical;",
 		  full_screen = TRUE,
-		  card_header("Bioactive peptides"),
+		  card_header("Bioactive peptides", HTML("&nbsp;&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;&nbsp;"), checkboxInput("filtering", label= "Show filtering options", value = F)),
 		  card_body(
 			#div(
 			DT::dataTableOutput("foundpeps")#,style = "overflow-x: auto;")#,# width: 95%;")
@@ -191,12 +228,23 @@ ui <- page_fluid(
 		),
 		card(
 		  max_height = "80px",
-		  downloadButton("dld", "Download", class = "btn-danger")
+		  layout_columns(
+				col_widths = c(8, 4),
+				downloadButton("dld", "Download", class = "btn-danger btn-block"),
+				actionButton("clearselectedrows", "Clear selected rows", class="btn btn-block")
+		  ),
+		  
+		),
+		card(
+		  id="pepdistfound", 
+		  style="width=100%;height=400px;display:none;", 
+		  card_header("Biofunction Distribution"),
+			plotlyOutput("pepdistfoundplot")
 		),
 		card(
 		  id="pepholder", 
 		  style="width=100%;height=250px;",
-		  card_header("Click the table!"),
+		  card_header("Specific peptides - select up to six"),
 		 #div(id="protholder", style="width=100%;height=400px;",
 			plotlyOutput("clicked")
 		)

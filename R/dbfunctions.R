@@ -422,8 +422,61 @@ find_smaller_matching_peps <- function( query_peps, clmn, table, col, dbpath, ba
 	return(df)
 }
 
-#df <- find_smaller_matching_peps(qq, "peptide", table = "7", col = "peptide", batch_size = 500)
 
+
+find_exact_matches <- function( query_peps, clmn, table, col, dbpath, batch_size = 500, preds=T) {
+    
+    con <- DBI::dbConnect(RSQLite::SQLite(), dbpath)
+	on.exit(DBI::dbDisconnect(con))
+    set_busytimeout(con, time=10000)
+    nr <- nchar(query_peps[[1]])
+    
+    if (clmn != "*" ) {
+        clmn <- paste0( paste0("`", clmn), "`")
+    }
+    
+	df <- tryCatch({
+    
+    uniq <- unique(query_peps)
+    
+    results <- list()
+    batches <- split(uniq, ceiling(seq_along(uniq) / batch_size))
+    
+    for (i in seq_along(batches)) {
+        
+        batch <- batches[[i]]
+        
+        placeholders <- paste(rep("?", length(batch)), collapse = ",")
+        
+        sql <- paste0(
+            "SELECT ",clmn," FROM `", table,
+            "` WHERE `", col, "` IN (", placeholders, ")"
+        )
+		if (preds == F) {
+            sql <- paste0(sql, " AND `peptipedia_id` NOT LIKE '%predicted%'")
+        }
+		
+        res <- DBI::dbGetQuery(con, sql, params = batch)
+		
+        if (nrow(res) > 0) {
+            colnames(res) <- "Found"
+            results[[i]] <- res
+        }
+    }
+    
+    results <- do.call(rbind, results)
+	results[["Query"]] <- results[["Found"]]
+	results[c("Query", "Found")]
+	
+	}, 
+	error = function(e) {print(e)
+						return(data.frame())
+						})
+	if( is.null(df) ) {
+        return(data.frame())
+    }
+	return(df)
+}
 
 
 

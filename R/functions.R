@@ -114,14 +114,15 @@ add_extra <- function(df, nr) {
 	query_split <- stringr::str_split_fixed(df[["Query"]], "", num_nr)
 	found_split <- stringr::str_split_fixed(df[["Found"]], "", num_nr)
 	df[["Exact_match"]] <- rowSums(query_split  == found_split)
-	df[["Percent_of_worst"]] <- vapply(
+	worst <- vapply(
 					seq_len(nrow(query_split)),
 					function(i) {
 						x <- query_split[i, ]
 						sum(matrixStats::colMaxs(grantm[, x, drop = FALSE]))
 					},
 					numeric(1)
-				)	
+				)
+	df[["Percent_of_worst"]] <- df[["Distance"]] / worst
 	return(df)
 
 }
@@ -328,6 +329,15 @@ go_throug_lst <- function(lst, compat, aa_levels, allbionames, searchtype, grant
 			final[[iter]] <- get_bio_data(final[[iter]], "db/biofuncs.sqlite", i)
 			iter <- iter + 1
 		}
+	} else if (searchtype == "Exact match") { 
+		#print(searchtype)
+		for ( i in names(lst) ) {
+			final[[iter]] <- find_exact_matches( lst[[i]], "peptide", i, "peptide", "db/biofuncs.sqlite", batch_size = 500, preds=inclpred)
+			if (length(final[[iter]]) > 0) {
+				final[[iter]] <- get_bio_data(final[[iter]], "db/biofuncs.sqlite", i)
+			}
+			iter <- iter + 1
+		}	
 	} else if (searchtype == "Smaller matching Peptides") { 
 		#print(searchtype)
 		for ( i in names(lst) ) {
@@ -357,11 +367,87 @@ go_throug_lst <- function(lst, compat, aa_levels, allbionames, searchtype, grant
 	if ( is.null(final) || nrow(final) == 0 ) {
 		print("is null")
 		return(final) 
-		}
+	}
+	
 	clnams <- colnames(final)
+	if ( !("Length" %in% clnams) ) {
+		final[["Length_found"]] <- nchar(final[["Found"]])
+		clnams <- c( clnams, "Length_found" )
+	}
+	
 	final <- cbind(final[ c( "Query", clnams[!(clnams %in% c( allbionames, "Query" ))]) ], final[allbionames][ colSums(final[allbionames]) > 0 ])
 	return(final)
 }
+
+
+
+update_filtering_options <- function(session, typo, dat, allbionames) {
+
+	clnames <- colnames(dat)
+	updateSelectizeInput(session, "biofunctionfilter", choices = allbionames[allbionames %in% clnames])
+	lncol <- "Length"
+	if ("Length_found" %in% clnames) {
+		lncol <- "Length_found"
+	}
+	ma <- max(dat[[lncol]])
+	mi <- min(dat[[lncol]])
+	updateSliderInput(session, "pepsizefilter", value=c(mi,ma), min=mi,max=ma, step=1)
+	updateSliderInput(session, "prcent_of_worst", value=c(0,1), min=0,max=1, step=0.01)
+	updateSliderInput(session, "score", value=c(0,1), min=0,max=1, step=0.01)
+	
+	if (typo == "Grantham" ) {
+		ma <- max(dat[["Exact_match"]])
+		mi <- min(dat[["Exact_match"]])
+		updateSliderInput(session, "match", value=c(mi,ma), min=mi,max=ma, step=1)
+		ma <- max(dat[["Distance"]])
+		mi <- min(dat[["Distance"]])
+		updateSliderInput(session, "distanceval", value=c(mi,ma), min=mi,max=ma, step=1)
+		
+	} else if (typo == "Hamming") {
+		ma <- max(dat[["Match"]])
+		mi <- min(dat[["Match"]])
+		updateSliderInput(session, "match", value=c(mi,ma), min=mi,max=ma, step=1)
+	}
+}
+
+
+
+filtering_function <- function(dat, typo, allbionames, input) {
+	
+	clnames <- colnames(dat)
+	allbionames <- allbionames[allbionames %in% clnames]
+	othernames <- clnames[ !(clnames %in% allbionames) ]
+	
+	if ( !is.null( input$biofunctionfilter ) ) {
+		dat <- cbind( dat[othernames], dat[input$biofunctionfilter])
+		dat <- dat[ rowSums(dat[input$biofunctionfilter]) > 0, ]
+	}
+	if (input$allowpred == F) {
+		dat <- dat[ !grepl( "predicted", dat[["peptipedia_id"]]), ]
+	}
+
+	lncol <- "Length"
+	if ("Length_found" %in% clnames) {
+		lncol <- "Length_found"
+	}
+	dat <- dat[ dat[[lncol]] >= input$pepsizefilter[[1]] & dat[[lncol]] <= input$pepsizefilter[[2]], ]
+	
+	if (typo == "Grantham" ) {
+		dat <- dat[ dat[["Distance"]] >= input$distanceval[[1]] & dat[["Distance"]] <= input$distanceval[[2]], ]
+		dat <- dat[ dat[["Percent_of_worst"]] >= input$prcent_of_worst[[1]] & dat[["Percent_of_worst"]] <= input$prcent_of_worst[[2]], ]
+		dat <- dat[ dat[["Exact_match"]] >= input$match[[1]] & dat[["Exact_match"]] <= input$match[[2]], ]
+		
+	} else if (typo == "Hamming") {
+	
+		dat <- dat[ dat[["Match"]] >= input$match[[1]] & dat[["Match"]] <= input$match[[2]], ]
+		dat <- dat[ dat[["Score"]] >= input$score[[1]] & dat[["Score"]] <= input$score[[2]], ]
+	}
+
+	return( dat )
+
+}
+
+
 
 
 
@@ -473,6 +559,32 @@ make_length_vs_biofunction <- function(biof, dbname) {
 
 
 
+make_found_biofunction_dist <- function(dat, allbionames, dbname) {
+
+	nr <- nrow(dat)
+    allbionames <- allbionames[ allbionames %in% colnames(dat)]
+	dat <- unname(colSums(dat[allbionames]))
+
+    fig <- plot_ly(x = allbionames, y = dat, type = 'bar',
+                   marker = list(color = "#339988"))
+    fig <- fig %>% layout(title = paste0("Bioactivity distribution of 'Found' peptides", "\nAll bioactivies: ",sum(dat), " and 'Found' peptides: ", nr ), 
+                          xaxis = list(title = "Bioactivities"
+						  ),
+                          yaxis = list(title = "Count"),
+						  margin = list(l = 5, r = 5, b = 5, t = 60)
+
+    )
+    fig <- fig %>% plotly::config(toImageButtonOptions = list(format= 'svg', # one of png, svg, jpeg, webp
+                                                 filename= 'bio_dist_found',
+                                                 height= NULL,#400, # = NULL to download img as is
+                                                 width= NULL,#600,  # = NULL to download img as is
+                                                 scale= 1 ),
+                     displaylogo = FALSE,
+                     modeBarButtonsToRemove = c("zoom2d", "pan2d", "select2d", "lasso2d", "zoomIn2d", "zoomOut2d", "autoScale2d"))
+    fig
+}
+
+
 
 make_biofunction_vs_length <- function(len, allbionames, dbname) {
 
@@ -483,7 +595,7 @@ make_biofunction_vs_length <- function(len, allbionames, dbname) {
 	datbool <- dat > 0
     fig <- plot_ly(x = allbionames[datbool], y = dat[datbool], type = 'bar',
                    marker = list(color = "#41608A"))
-    fig <- fig %>% layout(title = paste0("Bioactivity distribution and peptide length '", len,"'", "\nall bioactivies: ",sum(biox[allbionames][1,]), " and peptides: ", peps[["Row_count"]] ), 
+    fig <- fig %>% layout(title = paste0("Bioactivity distribution and peptide length '", len,"'", "\nAll bioactivies: ",sum(biox[allbionames][1,]), " and peptides: ", peps[["Row_count"]] ), 
                           xaxis = list(title = "Bioactivities"
 						  ),
                           yaxis = list(title = "Count"),

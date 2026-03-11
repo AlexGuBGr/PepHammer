@@ -30,6 +30,10 @@ peplen <- load_columns_from_table("Pep_length", "length_bio_dist",  dbpath)
 grantm <- extend_grantham( grantham_distance_matrix() )
 
 
+updatelist <- c( "biofunctionfilter", "pepsizefilter", "allowpred" )
+hamlist <- c("match")
+grlist <- c("match", "distanceval", "prcent_of_worst")
+
 
 if (Sys.info()[['user']] == 'shiny'){
   # Running on shinyapps.io

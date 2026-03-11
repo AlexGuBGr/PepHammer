@@ -22,8 +22,11 @@ subsetModal <- function(session) {
 
 shinyServer(function(input, output, session) {
 	
+	biodistplot <- reactiveVal()
 	dat <- reactiveVal()
+	dat_init <- reactiveVal()
 	starter <- reactiveVal()
+	searchtypeval <- reactiveVal()
 
 	  observe({
 		for ( i in 1:2 ) {gc()}
@@ -33,13 +36,15 @@ shinyServer(function(input, output, session) {
 
 	observeEvent( input$search, {
 		req(input$inppeps)
+		dat_init(NULL)
+		searchtypeval(input$searchtype)
 		get_data(starter, dat, input$inppeps, compat, aa_levels, allbionames, input$searchtype, grantm, input$inclpred)
 	})
 	
 	
 	observeEvent(starter(), {
 	
-		if (input$searchtype == "Hamming") {
+		if (searchtypeval() == "Hamming") {
 			cnter <- 1000 - ((1 - input$inclpred ) * 500)
 		} else {
 			cnter <- 1500 - ((1 - input$inclpred ) * 850)
@@ -91,12 +96,100 @@ shinyServer(function(input, output, session) {
 		}
 	  )
 
+	foundpepsproxy <- DT::dataTableProxy("foundpeps")
+
+	observeEvent(input$clearselectedrows, {
+		DT::selectRows(foundpepsproxy, NULL)
+	})
+
+
+	observeEvent(input$filtering, {
+		if ( input$filtering == T) {
+			shinyjs::show("filteringopts")
+		} else {
+			shinyjs::hide("filteringopts")
+		}
+	})
+	
+	observeEvent(dat(), {
+		if (is.null(dat())) {
+			biodistplot(NULL)
+			shinyjs::hide("pepdistfound")
+			
+			if ( is.null( dat_init() ) ) {
+				updateCheckboxInput(session, "filtering", value=F)
+				shinyjs::disable("filtering")
+			}
+
+		} else {
+			biodistplot(make_found_biofunction_dist(dat(), allbionames, dbpath))
+			req( is.null(dat_init()) )
+			
+			shinyjs::enable("filtering")
+			
+			if (searchtypeval() %in% c("Exact match", "Smaller matching Peptides", "Larger containing peptides")) {
+				shinyjs::hide("divboth")
+			} else {
+				shinyjs::show("divboth")
+				if ( searchtypeval() == "Hamming") {
+					shinyjs::hide("distanceval")
+					shinyjs::hide("prcent_of_worst")
+					shinyjs::show("score")
+				} else {
+					shinyjs::show("distanceval")
+					shinyjs::show("prcent_of_worst")
+					shinyjs::hide("score")
+				}
+			}
+
+		update_filtering_options(session, searchtypeval(), dat(), allbionames)
+		
+		}
+	
+	}, ignoreNULL = F)
+
+
+	observeEvent(input$clearfilter, {
+		if ( !is.null(dat_init()) ) {
+			dat(dat_init())
+			dat_init(NULL)
+		}
+	})
+
+
+	observeEvent(input$apply_filter, {
+		if ( is.null(dat_init()) ) {
+			dat_init(dat())
+		}
+		req( dat_init() )
+		dat( filtering_function(dat_init(), searchtypeval(), allbionames, input) )
+	})
+
+
+	output$pepdistfoundplot <- renderPlotly({
+		req(biodistplot())
+		biodistplot()
+	})
+
+	observeEvent(input$showbiodist, {
+		req(biodistplot())
+		shinyjs::toggle("pepdistfound")
+	})
+	
+	
+	observeEvent(input$foundpeps_rows_selected, {
+		if (is.null(input$foundpeps_rows_selected)) {
+			shinyjs::hide("pepholder")
+		} else {
+			shinyjs::show("pepholder")
+		}
+	}, ignoreNULL = F)
 	
 	output$clicked <- renderPlotly({
 		req(dat())
 		req(input$foundpeps_rows_selected)
 		
-		bioactivity_of_rows(dat()[ na.omit(input$foundpeps_rows_selected[1:6]),], allbionames)
+		bioactivity_of_rows(dat()[ head(input$foundpeps_rows_selected, 6),], allbionames)
 	})
 	
 	
