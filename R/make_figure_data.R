@@ -5,7 +5,7 @@ library(DBI)
 #dbpath = "../db/biofuncs.sqlite"
 
 
-allbionames <- c('Activator','Allergen','Amylase inhibitor','Angiotensin-converting enzyme (ace) inhibitors',
+allbionames_pep <- c('Activator','Allergen','Amylase inhibitor','Angiotensin-converting enzyme (ace) inhibitors',
 				'Angiotensinase inhibitor','Anti adenoviridae','Anti adenovirus','Anti african swine fever virus','Anti aging',
 				'Anti allergen','Anti alloherpesviridae','Anti amnesic','Anti andes virus','Anti angiogenic','Anti arenaviridae',
 				'Anti arteriviridae','Anti asfarviridae','Anti avian influenza virus','Anti avian myeloblastosis virus',
@@ -47,6 +47,9 @@ allbionames <- c('Activator','Allergen','Amylase inhibitor','Angiotensin-convert
 				'Protease inhibitor','Protein-protein interaction','Quorum sensing','Ralf-binding','Regulatory','Signal peptide',
 				'Sperm activating','Spermicide','Stimulator','Surface immobilized','Taste','Therapeutic','Toxic','Transit',
 				'Tumor homing','Tumor targeting','Venous','Wound healing')
+
+familynames <- c('7B2', 'ACBP', 'AKH/HRTH/RPCH', 'AVIT (prokineticin)', 'Adrenomedullin', 'Allatostatin', 'Allatotropin', 'Apelin', 'Arthropod CHH/MIH/GIH/VIH hormone', 'Arthropod PDH', 'Augurin', 'Bombesin/neuromedin-B/ranatensin', 'Bradykinin-related peptide', 'Buccalin', 'Bursicon', 'CART', 'CCAP', 'CCHamide', 'Calcitonin', 'Cerebellins', 'Chromogranin/secretogranin', 'Corazonin', 'Dermorphin', 'Diuretic hormone class 2', 'Ecdysis triggering hormone', 'Endothelin/sarafotoxin', 'FMRFamide related peptide', 'Fliktin/Flik', 'Galanin', 'Gastrin/cholecystokinin', 'Glucagon', 'GnRH', 'HIRamide', 'Insect eclosion hormone', 'Insulin', 'KISS1', 'Kinin', 'LWamide neuropeptide', 'Leptin', 'Melanin-concentrating hormone', 'Molluscan ELH', 'Motilin', 'Myomodulin', 'Myosuppressin', 'NPY', 'NVP-like peptides', 'Natalisin', 'Natriuretic peptide', 'Neurexophilin', 'Neuromedins', 'Neuropeptide B/W', 'Neuropeptide-like peptide', 'Neurotensin', 'Nucleobindin', 'Opioid', 'Orcokinin', 'Orexin', 'POMC', 'Parathyroid hormone', 'Pedal peptide', 'Periviscerokinin', 'ProSAAS', 'Proctolin', 'Pyrokinin', 'QWamide', 'RFamide neuropeptide', 'Resistin/FIZZ', 'SCP', 'Sauvagine/corticotropin-releasing factor/urotensin I', 'Serpin', 'Somatostatin', 'Somatotropin/prolactin', 'Spexin', 'TRH', 'Tachykinin', 'Tenascin', 'Urotensin-2', 'VGF', 'Vasopressin/oxytocin', 'YGGW-amide related peptide')
+
 
 
 get_bioview <- function(dbname, allbionames) {

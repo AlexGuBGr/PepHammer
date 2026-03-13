@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 #import networkx as nx
 
-# peptipedia/ is a folder with all bioactive peptides divided into FASTE files. 
+# peptipedia/ is a folder with all bioactive peptides divided into FASTA files. 
 # The names of the FASTA files reveal the bioactivty of the peptides
 dirr = "../../../peptipedia/"
 files = glob.glob1(dirr, "*")

@@ -161,18 +161,24 @@ ui <- page_fluid(
   navset_card_tab(
   nav_panel(title = "Pep_Search", 
 		layout_sidebar(
-		sidebar = sidebar(
+		sidebar = sidebar(style="gap:0px",
 		  width = 380,
+		  h6(strong("Choose database"), ),
+		  radioButtons( "choosedb", choices = c("Peptipedia", "NeuroPep_v2"), inline = T, label= NULL),
+		  hr(),
 		  h5(strong("Insert up to 2000 peptides")),
 		  radioButtons("searchtype", choices = c("Hamming", "Grantham", "Exact match", "Smaller matching Peptides", "Larger containing peptides"), inline = T, label = "Search type" ),
 		  checkboxInput("inclpred", label= "Include predicted", value = T),
-		  textAreaInput("inppeps", "Insert petides", height="400px"),
+		  br(),
+		  textAreaInput("inppeps", "Insert petides", height="300px"),
+		  p(style="padding:2px;"),
 			  layout_columns(
 				col_widths = c(4, 4, 4),
 				actionButton("search", "Search", class="btn btn-success btn-sm btn-block"),
 				actionButton("clear", "Clear", class="btn btn-primary btn-sm btn-block"),
 				actionButton("upld", "Upload", class="btn btn-info btn-sm btn-block")
 			  ),
+		  p(style="padding:2px;"),
 			  layout_columns(
 				col_widths = c(12),
 				actionButton("showbiodist", "Show distribution of Found peptides", class="btn btn-warning btn-sm btn-block"),
@@ -188,9 +194,11 @@ ui <- page_fluid(
 		  card_header("Filtering options"),
 		  card_body(
 			layout_columns(
-				col_widths = c(4, 4, 4),
+				col_widths = c(1, 4, 1, 4, 2),
 				#all
-				selectizeInput(inputId="biofunctionfilter",label = "Biofunction", multiple = T, choices = allbionames),
+				checkboxInput("onlyselbio", label= "Only selected", value = F),
+				selectizeInput(inputId="biofunctionfilter",label = "Biofunctions", multiple = T, choices = NULL),
+				p(""),
 				sliderInput("pepsizefilter", "Peptide length", min = 2, max = 150, value = c(2,150), step = 1),
 				checkboxInput("allowpred", label= "Allow predicted", value = T),
 			),
@@ -199,7 +207,7 @@ ui <- page_fluid(
 					
 					col_widths = c(4, 4, 4),
 					# both
-					sliderInput("match", "Match interval", min = 0, max = 150, value = c(0,150), step = 1),
+					sliderInput("match", "Miss interval", min = 0, max = 150, value = c(0,150), step = 1),
 					#grantham
 					sliderInput("distanceval", "Distance interval", min = 0, max = 100, value = c(0,100), step = 1),
 					sliderInput("prcent_of_worst", "Percent_of_worst interval", min = 0, max = 1, value = c(0,1), step = 0.01),
@@ -210,7 +218,8 @@ ui <- page_fluid(
 			layout_columns(
 					col_widths = c(4, 4, 4),
 					actionButton("apply_filter", "Apply filter", class="btn btn-info btn-sm btn-block"),
-					actionButton("clearfilter", "Clear filter", class="btn btn-primary btn-sm btn-block")
+					actionButton("clearfilter", "Clear filter", class="btn btn-primary btn-sm btn-block"),
+					p("")
 			)
 		  )
 		),
@@ -256,18 +265,23 @@ ui <- page_fluid(
 	layout_sidebar(
 		sidebar = sidebar(
 		  width = 300,
+		  h6(strong("Choose database"), ),
+		  radioButtons( "choosedbstat", choices = c("Peptipedia", "NeuroPep_v2"), inline = T, label= NULL),
+		  hr(),
+		  
 		  h5(strong("See the data")),
 			  layout_columns(
 				col_widths = c(12),
-				selectizeInput(inputId="biofunction",label = "Biofunction", multiple = F, choices = allbionames),
+				selectizeInput(inputId="biofunction",label = "Biofunction", multiple = F, choices = NULL), #allbionames
 			  ),
 			  layout_columns(
 				col_widths = c(12),
-				selectizeInput(inputId="pepsize",label = "Peptide length", multiple = F, choices = peplen)
+				selectizeInput(inputId="pepsize",label = "Peptide length", multiple = F, choices = NULL) #peplen
 			  ),
 		),
 		
 		card(
+		  style = "resize:vertical;",
 		  full_screen = TRUE,
 		  card_header("Plotly Figures"),
 		  card_body(

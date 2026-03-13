@@ -68,11 +68,11 @@ grantham_distance_matrix <- function() {
 }
 
 
-best_matches_fast_grantham <- function(query_vec, nr, grantm, inclpred) {
+best_matches_fast_grantham <- function(query_vec, nr, grantm, inclpred, dbpath) {
     
     query_vec <- query_vec[  !(grepl("[OU]", query_vec)) ]
     B <- stringr::str_split_fixed(query_vec, "", nchar(query_vec[[1]]) )
-    A <- encode_matrix( nr, aa_levels, gett = T, str_only = T, rmOU = T , preds=inclpred)
+    A <- encode_matrix(dbpath, nr, aa_levels, gett = T, str_only = T, rmOU = T , preds=inclpred)
     
     
     N <- nrow(A)
@@ -113,7 +113,7 @@ add_extra <- function(df, nr) {
 	num_nr <- as.numeric(nr)
 	query_split <- stringr::str_split_fixed(df[["Query"]], "", num_nr)
 	found_split <- stringr::str_split_fixed(df[["Found"]], "", num_nr)
-	df[["Exact_match"]] <- rowSums(query_split  == found_split)
+	df[["Miss_count_exact"]] <- df[["Length"]] - rowSums(query_split  == found_split)
 	worst <- vapply(
 					seq_len(nrow(query_split)),
 					function(i) {
@@ -183,19 +183,19 @@ best_matches_chunked <- function(A, B, chunk_size = 100000) {
 
 
 
-encode_matrix <- function(mat, aa_levels, gett=F, str_only = F, rmOU = F, preds=T) {
+encode_matrix <- function(dbpath, mat, aa_levels, gett=F, str_only = F, rmOU = F, preds=T) {
 	if ( gett == T ) {
 		if ( rmOU == T ) {
 			if (preds == T) {
-				mat <- stringr::str_split_fixed( load_columns_from_table_where_NOT_OU("peptide", mat, dbpath = "db/biofuncs.sqlite")[["peptide"]], "", as.numeric(mat) )
+				mat <- stringr::str_split_fixed( load_columns_from_table_where_NOT_OU("peptide", mat, dbpath = dbpath)[["peptide"]], "", as.numeric(mat) )
 			} else {
-				mat <- stringr::str_split_fixed( load_columns_from_table_where_NOT_OU_and_not_pred("peptide", mat, dbpath = "db/biofuncs.sqlite")[["peptide"]], "", as.numeric(mat) )
+				mat <- stringr::str_split_fixed( load_columns_from_table_where_NOT_OU_and_not_pred("peptide", mat, dbpath = dbpath)[["peptide"]], "", as.numeric(mat) )
 			}
 		} else {
 			if (preds == T) {
-				mat <- stringr::str_split_fixed( load_columns_from_table("peptide", mat, dbpath = "db/biofuncs.sqlite" )[["peptide"]], "", as.numeric(mat) )
+				mat <- stringr::str_split_fixed( load_columns_from_table("peptide", mat, dbpath = dbpath )[["peptide"]], "", as.numeric(mat) )
 			} else {
-				mat <- stringr::str_split_fixed( load_columns_from_table_where_not_pred("peptide", mat, dbpath = "db/biofuncs.sqlite" )[["peptide"]], "", as.numeric(mat) )
+				mat <- stringr::str_split_fixed( load_columns_from_table_where_not_pred("peptide", mat, dbpath = dbpath )[["peptide"]], "", as.numeric(mat) )
 			}
 		}
 		if ( str_only == T ) {
@@ -259,10 +259,10 @@ build_compat_matrix <- function(aa_levels) {
 
 
 
-best_matches_fast <- function(query_vec, nr, compat, aa_levels, inclpred) {
+best_matches_fast <- function(query_vec, nr, compat, aa_levels, inclpred, dbpath) {
     
-	B <- encode_matrix( stringr::str_split_fixed(query_vec, "", nchar(query_vec[[1]]) ), aa_levels )
-	A <- encode_matrix( nr, aa_levels, gett = T, preds=inclpred)
+	B <- encode_matrix(dbpath, stringr::str_split_fixed(query_vec, "", nchar(query_vec[[1]]) ), aa_levels )
+	A <- encode_matrix(dbpath, nr, aa_levels, gett = T, preds=inclpred)
 
     N <- nrow(A)
     M <- nrow(B)
@@ -289,7 +289,7 @@ best_matches_fast <- function(query_vec, nr, compat, aa_levels, inclpred) {
     }
     
 	num_nr <- as.numeric(nr)
-	outdf <- do.call(rbind, lapply(1:length(best_index), function(x) { data.frame(Query = names(best_index[x]), Found=best_index[[x]], Score=best_score[[x]]/num_nr,  Match = best_score[[x]], Length=num_nr)}))
+	outdf <- do.call(rbind, lapply(1:length(best_index), function(x) { data.frame(Query = names(best_index[x]), Found=best_index[[x]], Score=best_score[[x]]/num_nr,  Miss_count = num_nr - best_score[[x]], Length=num_nr)}))
 	outdf[["Found"]] <- apply( decode_matrix(A[ outdf[["Found"]], ,drop = F], aa_levels), 1, paste0, collapse = "")
 
 	return(outdf)
@@ -301,6 +301,7 @@ get_bio_data <- function(df, dbpath, dfname, col="Found", colname="peptide") {
 
 	if (!is.null(df) && nrow(df) > 0 ) {
 		dftmp <- load_columns_from_table_where("*", dfname, colname, df[[col]], dbpath)
+		dftmp <- dftmp[colnames(dftmp) != "Length"]
 		return( merge(df, dftmp, by.x = "Found", by.y = "peptide") )
 	} else {
 		return(NULL)
@@ -309,7 +310,7 @@ get_bio_data <- function(df, dbpath, dfname, col="Found", colname="peptide") {
 
 
 
-go_throug_lst <- function(lst, compat, aa_levels, allbionames, searchtype, grantm, inclpred) {
+go_throug_lst <- function(lst, compat, aa_levels, allbionames, searchtype, grantm, inclpred, dbpath) {
 
 	final <- list() #vector("list", length(lst))
 	iter <- 1
@@ -317,24 +318,24 @@ go_throug_lst <- function(lst, compat, aa_levels, allbionames, searchtype, grant
 	if (searchtype == "Hamming") {
 		
 		for ( i in names(lst) ) {
-			final[[iter]] <- best_matches_fast(lst[[i]], i, compat, aa_levels, inclpred)
-			final[[iter]] <- get_bio_data(final[[iter]], "db/biofuncs.sqlite", i)
+			final[[iter]] <- best_matches_fast(lst[[i]], i, compat, aa_levels, inclpred, dbpath)
+			final[[iter]] <- get_bio_data(final[[iter]], dbpath, i)
 			iter <- iter + 1
 		}
 	} else if (searchtype == "Grantham") {
 		#print(searchtype)
 		for ( i in names(lst) ) {
-			final[[iter]] <- best_matches_fast_grantham(lst[[i]], i, grantm, inclpred)
+			final[[iter]] <- best_matches_fast_grantham(lst[[i]], i, grantm, inclpred, dbpath)
 			#final[[iter]] <- add_extra(final[[iter]], i)
-			final[[iter]] <- get_bio_data(final[[iter]], "db/biofuncs.sqlite", i)
+			final[[iter]] <- get_bio_data(final[[iter]], dbpath, i)
 			iter <- iter + 1
 		}
 	} else if (searchtype == "Exact match") { 
 		#print(searchtype)
 		for ( i in names(lst) ) {
-			final[[iter]] <- find_exact_matches( lst[[i]], "peptide", i, "peptide", "db/biofuncs.sqlite", batch_size = 500, preds=inclpred)
+			final[[iter]] <- find_exact_matches( lst[[i]], "peptide", i, "peptide", dbpath, batch_size = 500, preds=inclpred)
 			if (length(final[[iter]]) > 0) {
-				final[[iter]] <- get_bio_data(final[[iter]], "db/biofuncs.sqlite", i)
+				final[[iter]] <- get_bio_data(final[[iter]], dbpath, i)
 			}
 			iter <- iter + 1
 		}	
@@ -343,9 +344,9 @@ go_throug_lst <- function(lst, compat, aa_levels, allbionames, searchtype, grant
 		for ( i in names(lst) ) {
 			if ( as.numeric(i) > 2 ) {
 				tmpi <- as.character(max(c(as.numeric(i)-1 , 2)))
-				final[[iter]] <- find_smaller_matching_peps( lst[[i]], "peptide", tmpi, "peptide", "db/biofuncs.sqlite", batch_size = 500, preds=inclpred)
+				final[[iter]] <- find_smaller_matching_peps( lst[[i]], "peptide", tmpi, "peptide", dbpath, batch_size = 500, preds=inclpred)
 				if (length(final[[iter]]) > 0) {
-					final[[iter]] <- get_bio_data(final[[iter]], "db/biofuncs.sqlite", tmpi)
+					final[[iter]] <- get_bio_data(final[[iter]], dbpath, tmpi)
 				}
 				iter <- iter + 1
 			}
@@ -355,9 +356,9 @@ go_throug_lst <- function(lst, compat, aa_levels, allbionames, searchtype, grant
 		for ( i in names(lst) ) {
 			if ( as.numeric(i) < 150 ) {
 				tmpi <- as.character(as.numeric(i)+1)
-				final[[iter]] <- find_larger_containing_peptides(lst[[i]], "peptide", tmpi, "peptide", "db/biofuncs.sqlite", batch_size = 500, preds=inclpred)
+				final[[iter]] <- find_larger_containing_peptides(lst[[i]], "peptide", tmpi, "peptide", dbpath, batch_size = 500, preds=inclpred)
 				if (length(final[[iter]]) > 0) {
-					final[[iter]] <- get_bio_data(final[[iter]], "db/biofuncs.sqlite", tmpi)
+					final[[iter]] <- get_bio_data(final[[iter]], dbpath, tmpi)
 				}
 				iter <- iter + 1
 			}
@@ -375,7 +376,11 @@ go_throug_lst <- function(lst, compat, aa_levels, allbionames, searchtype, grant
 		clnams <- c( clnams, "Length_found" )
 	}
 	
-	final <- cbind(final[ c( "Query", clnams[!(clnams %in% c( allbionames, "Query" ))]) ], final[allbionames][ colSums(final[allbionames]) > 0 ])
+	
+	if (grepl("biofuncs", dbpath)) {
+		final <- cbind(final[ c( "Query", clnams[!(clnams %in% c( allbionames, "Query" ))]) ], final[allbionames][ colSums(final[allbionames]) > 0 ])
+	}
+	
 	return(final)
 }
 
@@ -394,22 +399,29 @@ update_filtering_options <- function(session, typo, dat, allbionames) {
 	updateSliderInput(session, "pepsizefilter", value=c(mi,ma), min=mi,max=ma, step=1)
 	updateSliderInput(session, "prcent_of_worst", value=c(0,1), min=0,max=1, step=0.01)
 	updateSliderInput(session, "score", value=c(0,1), min=0,max=1, step=0.01)
+	updateCheckboxInput(session, "onlyselbio", value=F)
+	updateCheckboxInput(session, "allowpred", value=T)
 	
 	if (typo == "Grantham" ) {
-		ma <- max(dat[["Exact_match"]])
-		mi <- min(dat[["Exact_match"]])
+		ma <- max(dat[["Miss_count_exact"]])
+		mi <- min(dat[["Miss_count_exact"]])
 		updateSliderInput(session, "match", value=c(mi,ma), min=mi,max=ma, step=1)
 		ma <- max(dat[["Distance"]])
 		mi <- min(dat[["Distance"]])
 		updateSliderInput(session, "distanceval", value=c(mi,ma), min=mi,max=ma, step=1)
 		
 	} else if (typo == "Hamming") {
-		ma <- max(dat[["Match"]])
-		mi <- min(dat[["Match"]])
+		ma <- max(dat[["Miss_count"]])
+		mi <- min(dat[["Miss_count"]])
 		updateSliderInput(session, "match", value=c(mi,ma), min=mi,max=ma, step=1)
 	}
 }
 
+
+# TODO:
+# remove zero class always
+# allow for selection of all non-zero clases based on hits in selecte classes.
+# for hamming maybe insrt missing instead of match
 
 
 filtering_function <- function(dat, typo, allbionames, input) {
@@ -418,29 +430,39 @@ filtering_function <- function(dat, typo, allbionames, input) {
 	allbionames <- allbionames[allbionames %in% clnames]
 	othernames <- clnames[ !(clnames %in% allbionames) ]
 	
-	if ( !is.null( input$biofunctionfilter ) ) {
-		dat <- cbind( dat[othernames], dat[input$biofunctionfilter])
-		dat <- dat[ rowSums(dat[input$biofunctionfilter]) > 0, ]
-	}
+	# peptipedia_id:
 	if (input$allowpred == F) {
 		dat <- dat[ !grepl( "predicted", dat[["peptipedia_id"]]), ]
 	}
-
+	# length:
 	lncol <- "Length"
 	if ("Length_found" %in% clnames) {
 		lncol <- "Length_found"
 	}
 	dat <- dat[ dat[[lncol]] >= input$pepsizefilter[[1]] & dat[[lncol]] <= input$pepsizefilter[[2]], ]
 	
+	# Grantham & Hamming:
 	if (typo == "Grantham" ) {
 		dat <- dat[ dat[["Distance"]] >= input$distanceval[[1]] & dat[["Distance"]] <= input$distanceval[[2]], ]
 		dat <- dat[ dat[["Percent_of_worst"]] >= input$prcent_of_worst[[1]] & dat[["Percent_of_worst"]] <= input$prcent_of_worst[[2]], ]
-		dat <- dat[ dat[["Exact_match"]] >= input$match[[1]] & dat[["Exact_match"]] <= input$match[[2]], ]
+		dat <- dat[ dat[["Miss_count_exact"]] >= input$match[[1]] & dat[["Miss_count_exact"]] <= input$match[[2]], ]
 		
 	} else if (typo == "Hamming") {
-	
-		dat <- dat[ dat[["Match"]] >= input$match[[1]] & dat[["Match"]] <= input$match[[2]], ]
+		dat <- dat[ dat[["Miss_count"]] >= input$match[[1]] & dat[["Miss_count"]] <= input$match[[2]], ]
 		dat <- dat[ dat[["Score"]] >= input$score[[1]] & dat[["Score"]] <= input$score[[2]], ]
+	}
+
+	# biofunctions:
+	if ( !is.null( input$biofunctionfilter ) & input$onlyselbio == T ) {
+		dat <- cbind( dat[othernames], dat[input$biofunctionfilter])
+		dat <- dat[ rowSums(dat[input$biofunctionfilter]) > 0, ]
+		
+	} else if ( !is.null( input$biofunctionfilter ) & input$onlyselbio == F ) {
+		dat <- dat[ rowSums(dat[input$biofunctionfilter]) > 0, ]
+		dat <- cbind( dat[othernames], dat[allbionames][colSums(dat[allbionames]) > 0])
+		
+	} else if ( is.null( input$biofunctionfilter ) ) {
+		dat <- cbind( dat[othernames], dat[allbionames][colSums(dat[allbionames]) > 0])
 	}
 
 	return( dat )
@@ -451,10 +473,13 @@ filtering_function <- function(dat, typo, allbionames, input) {
 
 
 
-check_length <- function(strings) {
+check_length <- function(strings, dbpath) {
     nc <- nchar(strings)
+	if (grepl("neuropepv2", dbpath)) {
+		nc[ nc %in% c(2,  96,  98, 105, 107, 109, 136, 142, 147, 148)] <- 0
+	}
     cx <- stringr::str_count(strings, "X")
-    strings[ (nc > 1 & nc < 150) & (cx / nc) <= 0.2]
+    strings[ (nc > 1 & nc < 151) & (cx / nc) <= 0.2]
 }
 
 return_message <- function(strings) {
@@ -462,25 +487,16 @@ return_message <- function(strings) {
 	ln <- length(strings)
 	if ( ln == 0 ) {
 		showNotification("Invalid peptides - try again", duration = 6, type = "error")
+		removeModal()
 		req(F)
 	}
 }
 
 
-get_data <- function(starter, dat, strings, compat, aa_levels, allbionames, searchtype, grantm, inclpred) {
+get_data <- function(starter, dat, strings, compat, aa_levels, allbionames, searchtype, grantm, inclpred, dbpath ) {
 
 
-	strings <- stringr::str_split_1(strings, "\n")
-	if ( length(strings) > 2000) {return_message(c())}
-	strings <- strings[duplicated(strings) == F]
-	return_message(strings)
-	strings <- check_length(strings)
-	return_message(strings)
-	strings <- strings[sapply(strings, function(x){ all(stringr::str_split_fixed(x, "", nchar(x)) %in% aa_levels) }, USE.NAMES = F)]
-	return_message(strings)
-		#update the textinut area
-
-	  showModal(modalDialog(
+	showModal(modalDialog(
 			title = "Analyzing...",
 			size = "m",
 			HTML("<strong id='tmploader'>Loading...</strong><br>
@@ -489,7 +505,19 @@ get_data <- function(starter, dat, strings, compat, aa_levels, allbionames, sear
                 </div>"),
 			easyClose = F,
 			footer = NULL
-		  ))
+	))
+	# maybe move to Future
+	strings <- stringr::str_split_1(strings, "\n")
+	#if ( length(strings) > 2000) {return_message(c())}
+	strings <- strings[duplicated(strings) == F]
+	return_message(strings)
+	strings <- check_length(strings, dbpath)
+	return_message(strings)
+	strings <- strings[sapply(strings, function(x){ all(stringr::str_split_fixed(x, "", nchar(x)) %in% aa_levels) }, USE.NAMES = F)]
+	return_message(strings)
+		#update the textinut area
+
+
 
 	starter( max( c(length(strings)/10, 6) ) )
 	future_promise({
@@ -499,7 +527,7 @@ get_data <- function(starter, dat, strings, compat, aa_levels, allbionames, sear
 		if (length(strings) > 0) {
 			##strings <- sapply(strings, function(x){ tmp <- stringr::str_split_fixed(x, "", nchar(x)); tmp[!(tmp %in% aa_levels)] <- "_"; paste(tmp,collapse = "") }, USE.NAMES = F)
 			strings <- split(strings, nchar(strings))
-			return( go_throug_lst(strings, compat, aa_levels, allbionames, searchtype, grantm, inclpred))
+			return( go_throug_lst(strings, compat, aa_levels, allbionames, searchtype, grantm, inclpred, dbpath))
 		} else {
 			return(NULL)
 		}
@@ -508,7 +536,7 @@ get_data <- function(starter, dat, strings, compat, aa_levels, allbionames, sear
 		globals = list(strings=strings, compat=compat, 
 						aa_levels=aa_levels, allbionames=allbionames, 
 						searchtype=searchtype, grantm=grantm,
-						inclpred=inclpred)
+						inclpred=inclpred, dbpath=dbpath)
 	  
 	  ) %...>% (function(result) {
 		shinyjs::runjs('document.getElementById("tmploader").innerHTML = "==========================================="')

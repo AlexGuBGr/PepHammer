@@ -27,6 +27,12 @@ shinyServer(function(input, output, session) {
 	dat_init <- reactiveVal()
 	starter <- reactiveVal()
 	searchtypeval <- reactiveVal()
+	
+	allbionames <- reactiveVal()
+	allbionames_stat <- reactiveVal()
+	statdb <- reactiveVal()
+	keybio <- reactiveVal(NULL)
+	keylen <- reactiveVal(NULL)
 
 	  observe({
 		for ( i in 1:2 ) {gc()}
@@ -34,11 +40,38 @@ shinyServer(function(input, output, session) {
 	  })
 
 
+	observeEvent(input$choosedb,{
+	
+		if (input$choosedb == "Peptipedia" ) {
+			allbionames(allbionames_pep)
+			shinyjs::enable("inclpred")
+		} else {
+			updateCheckboxInput(session, "inclpred", value = T)
+			shinyjs::disable("inclpred")
+			allbionames(familynames)
+		}
+	})
+
+
+	observeEvent(input$choosedbstat,{
+		keybio(NULL)
+		keylen(NULL)
+		if (input$choosedbstat == "Peptipedia" ) {
+			allbionames_stat(allbionames_pep)
+		} else { 
+			allbionames_stat(familynames)	
+		}
+		statdb( dbselector[[input$choosedbstat]] )
+		updateSelectizeInput(session, "biofunction", choices = allbionames_stat())
+		updateSelectizeInput(session, "pepsize", choices = load_columns_from_table("Pep_length", "length_bio_dist",  statdb() ))
+	})
+
+
 	observeEvent( input$search, {
 		req(input$inppeps)
 		dat_init(NULL)
 		searchtypeval(input$searchtype)
-		get_data(starter, dat, input$inppeps, compat, aa_levels, allbionames, input$searchtype, grantm, input$inclpred)
+		get_data(starter, dat, input$inppeps, compat, aa_levels, allbionames(), input$searchtype, grantm, input$inclpred, dbselector[[input$choosedb]] )
 	})
 	
 	
@@ -112,6 +145,8 @@ shinyServer(function(input, output, session) {
 	})
 	
 	observeEvent(dat(), {
+		#req(input$choosedb == "Peptipedia")
+	
 		if (is.null(dat())) {
 			biodistplot(NULL)
 			shinyjs::hide("pepdistfound")
@@ -122,8 +157,8 @@ shinyServer(function(input, output, session) {
 			}
 
 		} else {
-			biodistplot(make_found_biofunction_dist(dat(), allbionames, dbpath))
-			req( is.null(dat_init()) )
+			biodistplot(make_found_biofunction_dist(dat(), allbionames(), dbselector[[input$choosedb]]))
+			#req( is.null(dat_init()) )
 			
 			shinyjs::enable("filtering")
 			
@@ -142,7 +177,7 @@ shinyServer(function(input, output, session) {
 				}
 			}
 
-		update_filtering_options(session, searchtypeval(), dat(), allbionames)
+		update_filtering_options(session, searchtypeval(), dat(), allbionames())
 		
 		}
 	
@@ -162,7 +197,7 @@ shinyServer(function(input, output, session) {
 			dat_init(dat())
 		}
 		req( dat_init() )
-		dat( filtering_function(dat_init(), searchtypeval(), allbionames, input) )
+		dat( filtering_function(dat(), searchtypeval(), allbionames(), input) )
 	})
 
 
@@ -189,19 +224,28 @@ shinyServer(function(input, output, session) {
 		req(dat())
 		req(input$foundpeps_rows_selected)
 		
-		bioactivity_of_rows(dat()[ head(input$foundpeps_rows_selected, 6),], allbionames)
+		bioactivity_of_rows(dat()[ head(input$foundpeps_rows_selected, 6),], allbionames())
 	})
 	
 	
+	#### Statistics tab ###################
+
+	observeEvent(input$biofunction,{
+		keybio(input$biofunction)
+	})
+	
+	observeEvent(input$pepsize,{
+		keylen(input$pepsize)
+	})
 	
 	output$lenvsbio <- renderPlotly({
-	
-		make_length_vs_biofunction(input$biofunction, dbpath)
+		req(keybio())
+		make_length_vs_biofunction(keybio(), statdb() )
 	})
 
 	output$biovslen <- renderPlotly({
-	
-		make_biofunction_vs_length(input$pepsize, allbionames, dbpath)
+		req(keylen())
+		make_biofunction_vs_length(keylen(), allbionames_stat(), statdb() )
 	
 	})
 
