@@ -136,6 +136,60 @@ def convert_to_sql(out_len, vocab, bionames):
             save_table_to_db(df, "../db/biofuncs.sqlite", k, indx=False)
 
 
+def get_peptides(dirr, files, vocab, prcnt = 0.2):
+    print("Iterating through Peptipedia files...")
+    out = {}
+    notin = set()
+    for i in files:
+        biofunction = i.split(".")[0]
+        print(biofunction)
+        with open(dirr + i, "r", encoding="utf-8") as f:
+            lines = f.read().split(">")
+
+        for ii in lines:
+            tmp = ii.split("\n")
+            if len(tmp) == 3:
+                tmp[1] = tmp[1].upper()
+                intt = len(tmp[1])
+                if len(set(tmp[1]).difference(vocab)) == 0 and tmp[1].count("X") / intt <= prcnt and intt > 1 and intt < 151:
+                    data = (biofunction, tmp[0])
+                    if tmp[1] not in out:
+                        out[tmp[1]] = {data}
+                    else: 
+                        if data not in out[tmp[1]]:
+                            out[tmp[1]].update( [data] )
+                else:
+                    notin.add(ii)
+            else:
+                notin.add(ii)
+                
+    print("filtered away:", len(notin))
+    return out
+
+
+def make_table(dct, cats):
+    cats = list(cats)
+    ze = np.zeros((len(dct), len(cats))) 
+    dctnames = sorted_list = sorted(list(dct.keys()), key=lambda x: (len(x), x))
+    ids = []
+    ln = []
+    for j,i in enumerate(dctnames):
+        for ii in dct[i]:
+            ze[j][cats.index(ii[0])] = 1
+        ids.append(ii[1])
+        ln.append(len(i))
+    ze = pd.DataFrame(ze, columns=cats)
+    ze["peptipedia_id"] = ids
+    ze["peptide"] = dctnames
+    ze["Length"] = ln
+    save_table_to_db(ze, "../db/peptipedia_bio.sqlite", "peptipedia")
+
+
+#out = get_peptides(dirr, files, vocab, prcnt = 0.2)
+
+
+
 
 if __name__ == "__main__":
-    convert_to_sql( sort_by_len( get_peptides(dirr, files, vocab), vocab, bionames), vocab, bionames )
+    #convert_to_sql( sort_by_len( get_peptides(dirr, files, vocab), vocab, bionames), vocab, bionames )
+    make_table( get_peptides(dirr, files, vocab, prcnt = 0.2), bionames)

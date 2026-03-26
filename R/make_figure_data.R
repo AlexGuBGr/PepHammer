@@ -51,6 +51,27 @@ allbionames_pep <- c('Activator','Allergen','Amylase inhibitor','Angiotensin-con
 familynames <- c('7B2', 'ACBP', 'AKH/HRTH/RPCH', 'AVIT (prokineticin)', 'Adrenomedullin', 'Allatostatin', 'Allatotropin', 'Apelin', 'Arthropod CHH/MIH/GIH/VIH hormone', 'Arthropod PDH', 'Augurin', 'Bombesin/neuromedin-B/ranatensin', 'Bradykinin-related peptide', 'Buccalin', 'Bursicon', 'CART', 'CCAP', 'CCHamide', 'Calcitonin', 'Cerebellins', 'Chromogranin/secretogranin', 'Corazonin', 'Dermorphin', 'Diuretic hormone class 2', 'Ecdysis triggering hormone', 'Endothelin/sarafotoxin', 'FMRFamide related peptide', 'Fliktin/Flik', 'Galanin', 'Gastrin/cholecystokinin', 'Glucagon', 'GnRH', 'HIRamide', 'Insect eclosion hormone', 'Insulin', 'KISS1', 'Kinin', 'LWamide neuropeptide', 'Leptin', 'Melanin-concentrating hormone', 'Molluscan ELH', 'Motilin', 'Myomodulin', 'Myosuppressin', 'NPY', 'NVP-like peptides', 'Natalisin', 'Natriuretic peptide', 'Neurexophilin', 'Neuromedins', 'Neuropeptide B/W', 'Neuropeptide-like peptide', 'Neurotensin', 'Nucleobindin', 'Opioid', 'Orcokinin', 'Orexin', 'POMC', 'Parathyroid hormone', 'Pedal peptide', 'Periviscerokinin', 'ProSAAS', 'Proctolin', 'Pyrokinin', 'QWamide', 'RFamide neuropeptide', 'Resistin/FIZZ', 'SCP', 'Sauvagine/corticotropin-releasing factor/urotensin I', 'Serpin', 'Somatostatin', 'Somatotropin/prolactin', 'Spexin', 'TRH', 'Tachykinin', 'Tenascin', 'Urotensin-2', 'VGF', 'Vasopressin/oxytocin', 'YGGW-amide related peptide')
 
 
+mulpclass <- c('hemolytic', 'toxic', 'antimicrobial', 'antivirus',
+			   'antiparasite', 'anticancer', 'antibacterial', 'antifungal',
+			   'cellcellsignaling', 'neuropeptide', 'peptidehormone', 'antifreeze',
+			   'cytokines_growthfactors', 'antioxidative', 'drugdelivery', 'opioid',
+			   'ACE inhibitor', 'antihypertensive', 'antidiabetes',
+			   'dipeptidyl peptidase inhibitor')
+			   
+	   
+	   
+tissues <- c('ARC_BRAIN_PXD008795',
+				'Ascending_colon_PXD009788', 'CSF_PXD062419', 'CTX_BRAIN_PXD008795',
+				'CTX_neurons_ACN_PXD008795', 'CVaF_PXD004450', 'Duodenum_PXD009788',
+				'Ileum_PXD009788', 'Jejenum_Post_gastrectomy_PXD011498',
+				'Jejenum_Pre-gastrectomy_PXD011498', 'Jejunum_PXD009788',
+				'POMC_neurons_GuHCL_PXD008795', 'PVN_BRAIN_PXD008795',
+				'Serum_MASLD_PXD052061', 'Stomach_PXD009788', 'Urine_T1D_PXD012210',
+				'Urine_control_PXD012210', 'pancreatic_islets_PXD026095',
+				'plasma_healthy_PXD003533', 'plasma_healthy_PXD008141',
+				'plasma_healthy_exercise_PXD007191', 'rectum_PXD009788',
+				'serum_healthy_PXD008141', 'sigmoid_colon_PXD009788')
+
 
 get_bioview <- function(dbname, allbionames) {
     tabls <- list_tables(dbname)

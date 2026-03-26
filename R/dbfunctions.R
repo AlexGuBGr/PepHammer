@@ -297,9 +297,26 @@ load_columns_from_table_where_symb_val_and_where_symb_val <- function(cols, tabl
   
 }
 
-#
 
-find_larger_containing_peptides <- function(query_peps, clmn, table, col, dbpath, batch_size = 500, preds=T) {
+get_countdb <- function(dbpath, tble, len) {
+    
+    conn <- DBI::dbConnect(RSQLite::SQLite(), dbpath)
+    set_busytimeout(conn, time=10000)
+    
+    df <- tryCatch({
+        DBI::dbGetQuery(conn, paste0("SELECT COUNT(*) FROM ",tble," WHERE Length = ",len,";"))
+        
+    }, error = function(e) {
+        return(NULL)
+        
+    }, finally = DBI::dbDisconnect(conn))
+    
+    return(df)
+}
+
+
+
+find_larger_containing_peptides <- function(query_peps, clmn, tabl, len, col, dbpath, batch_size = 500, preds=T) {
 
     con <- DBI::dbConnect(RSQLite::SQLite(), dbpath)
 	on.exit(DBI::dbDisconnect(con))
@@ -324,12 +341,12 @@ find_larger_containing_peptides <- function(query_peps, clmn, table, col, dbpath
                 "SELECT ", clmn, ",
               substr(`", col, "`,1,",nr,") AS sub1,
               substr(`", col, "`,2,",nr,") AS sub2
-			   FROM `", table, "`
+			   FROM `", tabl, "`
 			   WHERE (sub1 IN (", placeholders, ")
-				  OR sub2 IN (", placeholders, "))"
+				  OR sub2 IN (", placeholders, "))", " AND `Length` = ", len
 					)
             if (preds == F) {
-				sql <- paste0(sql, " AND `peptipedia_id` NOT LIKE '%predicted%'")
+				sql <- paste0(sql, " AND `ID` NOT LIKE '%predicted%'")
 			}
 			
             res <- DBI::dbGetQuery(con, sql, params = c(batch, batch))
@@ -362,7 +379,7 @@ find_larger_containing_peptides <- function(query_peps, clmn, table, col, dbpath
 #df <- find_containing_peptides(x, "peptide", table = "9", col = "peptide", batch_size = 500)
 
 
-find_smaller_matching_peps <- function( query_peps, clmn, table, col, dbpath, batch_size = 500, preds=T) {
+find_smaller_matching_peps <- function( query_peps, clmn, tabl, len, col, dbpath, batch_size = 500, preds=T) {
     
     con <- DBI::dbConnect(RSQLite::SQLite(), dbpath)
 	on.exit(DBI::dbDisconnect(con))
@@ -395,11 +412,11 @@ find_smaller_matching_peps <- function( query_peps, clmn, table, col, dbpath, ba
         placeholders <- paste(rep("?", length(batch)), collapse = ",")
         
         sql <- paste0(
-            "SELECT ",clmn," FROM `", table,
-            "` WHERE `", col, "` IN (", placeholders, ")"
+            "SELECT ",clmn," FROM `", tabl,
+            "` WHERE `", col, "` IN (", placeholders, ")", " AND `Length` = ", len
         )
 		if (preds == F) {
-            sql <- paste0(sql, " AND `peptipedia_id` NOT LIKE '%predicted%'")
+            sql <- paste0(sql, " AND `ID` NOT LIKE '%predicted%'")
         }
 		
         res <- DBI::dbGetQuery(con, sql, params = batch)
@@ -424,7 +441,7 @@ find_smaller_matching_peps <- function( query_peps, clmn, table, col, dbpath, ba
 
 
 
-find_exact_matches <- function( query_peps, clmn, table, col, dbpath, batch_size = 500, preds=T) {
+find_exact_matches <- function( query_peps, clmn, tabl, col, dbpath, batch_size = 500, preds=T) {
     
     con <- DBI::dbConnect(RSQLite::SQLite(), dbpath)
 	on.exit(DBI::dbDisconnect(con))
@@ -449,11 +466,11 @@ find_exact_matches <- function( query_peps, clmn, table, col, dbpath, batch_size
         placeholders <- paste(rep("?", length(batch)), collapse = ",")
         
         sql <- paste0(
-            "SELECT ",clmn," FROM `", table,
+            "SELECT ",clmn," FROM `", tabl,
             "` WHERE `", col, "` IN (", placeholders, ")"
         )
 		if (preds == F) {
-            sql <- paste0(sql, " AND `peptipedia_id` NOT LIKE '%predicted%'")
+            sql <- paste0(sql, " AND `ID` NOT LIKE '%predicted%'")
         }
 		
         res <- DBI::dbGetQuery(con, sql, params = batch)
@@ -481,7 +498,7 @@ find_exact_matches <- function( query_peps, clmn, table, col, dbpath, batch_size
 
 
 
-load_columns_from_table_where_NOT_OU <- function(cols, tablename, dbpath ) { 
+load_columns_from_table_where_NOT_OU <- function(cols, tablename, len, dbpath ) { 
     
     conn <- DBI::dbConnect(RSQLite::SQLite(), dbpath)
     set_busytimeout(conn, time=10000)
@@ -492,7 +509,10 @@ load_columns_from_table_where_NOT_OU <- function(cols, tablename, dbpath ) {
         cols <- paste(paste0(paste0("`",cols),"`"), collapse = ",")
     }
     
-    cond <- " WHERE `peptide` NOT LIKE '%O%' AND `peptide` NOT LIKE '%U%'"
+    cond <- paste0( "WHERE `Length` = ", len,
+				    " AND `peptide` NOT LIKE '%O%'",
+				    " AND `peptide` NOT LIKE '%U%'"
+				   )
     df <- tryCatch({
         DBI::dbGetQuery(conn, paste0("SELECT ", cols, " FROM ", "'",tablename,"'", cond) )
         
@@ -506,7 +526,7 @@ load_columns_from_table_where_NOT_OU <- function(cols, tablename, dbpath ) {
 }
 
 
-load_columns_from_table_where_NOT_OU_and_not_pred <- function(cols, tablename, dbpath ) { 
+load_columns_from_table_where_NOT_OU_and_not_pred <- function(cols, tablename, len, dbpath ) { 
     
     conn <- DBI::dbConnect(RSQLite::SQLite(), dbpath)
     set_busytimeout(conn, time=10000)
@@ -517,7 +537,7 @@ load_columns_from_table_where_NOT_OU_and_not_pred <- function(cols, tablename, d
         cols <- paste(paste0(paste0("`",cols),"`"), collapse = ",")
     }
     
-    cond <- " WHERE `peptide` NOT LIKE '%O%' AND `peptide` NOT LIKE '%U%' AND `peptipedia_id` NOT LIKE '%predicted%'"
+    cond <- paste0( "WHERE `Length` = ", len, " AND `peptide` NOT LIKE '%O%' AND `peptide` NOT LIKE '%U%' AND `ID` NOT LIKE '%predicted%'")
     #print(paste0("SELECT ", cols, " FROM ", "'",tablename,"'", cond))
     df <- tryCatch({
         DBI::dbGetQuery(conn, paste0("SELECT ", cols, " FROM ", "'",tablename,"'", cond) )
@@ -531,7 +551,7 @@ load_columns_from_table_where_NOT_OU_and_not_pred <- function(cols, tablename, d
 }
 
 
-load_columns_from_table_where_not_pred <- function(cols, tablename, dbpath ) { 
+load_columns_from_table_where_not_pred <- function(cols, tablename, len, dbpath ) { 
     
     conn <- DBI::dbConnect(RSQLite::SQLite(), dbpath)
     set_busytimeout(conn, time=10000)
@@ -542,7 +562,7 @@ load_columns_from_table_where_not_pred <- function(cols, tablename, dbpath ) {
         cols <- paste(paste0(paste0("`",cols),"`"), collapse = ",")
     }
     
-    cond <- " WHERE `peptipedia_id` NOT LIKE '%predicted%'"
+    cond <- paste0( "WHERE `Length` = ", len, " AND `ID` NOT LIKE '%predicted%'")
     
     df <- tryCatch({
         DBI::dbGetQuery(conn, paste0("SELECT ", cols, " FROM ", "'",tablename,"'", cond) )

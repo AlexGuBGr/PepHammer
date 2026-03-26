@@ -22,6 +22,56 @@ def save_table_to_db(df, DBname, table, indx=False):
         con.close()
 
 
+def createdb_index(DBname, table):
+    try:
+        conn = sqlite3.connect(DBname)
+        cur = conn.cursor()
+        query = f"CREATE INDEX IF NOT EXISTS idx_{table}_length ON {table}(Length);"
+        print(query)
+        cur.execute(query)
+    except Exception as e:
+        print(e)
+    finally:
+        cur.close()
+        conn.close()
+
+
+def check_index(DBname, table):
+
+    try:
+        conn = sqlite3.connect(DBname)
+        cur = conn.cursor()
+        sql = f"""
+            EXPLAIN QUERY PLAN
+            SELECT 'peptide' FROM {table} WHERE Length = 7;
+            """
+        cur.execute(sql)
+        for row in cur.fetchall():
+            print(row)
+
+    except Exception as e:
+        print(e)
+    finally:
+        cur.close()
+        conn.close()
+
+
+def set_to_wal(DBname):
+
+    con = sqlite3.connect(DBname, timeout = 10)#, isolation_level = None)
+    #con.isolation_level = None
+    try:
+        c = con.cursor()
+        c.execute('pragma journal_mode=wal')
+        wal_mode = c.fetchone()[0]
+        print("DB mode: {}".format(wal_mode))
+        
+    except:
+        print("could not set tp WAL mode")
+    finally:
+        c.close()
+        con.close()
+
 def vacuum_db(dbname): 
 
     conn = sqlite3.connect(dbname)
@@ -116,5 +166,12 @@ def add_to_db(df, dbnam):
 if __name__ == "__main__":
     df = pd.read_csv("neuropeptide_excel_NeuroPepV2_neuropeptide_all.txt", sep="\t")
     df = prep_neuro(df, vocab)
-    add_to_db(df, "neuropepv2.sqlite")
-    vacuum_db("neuropepv2.sqlite")
+    save_table_to_db(df, "../db/neuropepv2_one.sqlite", "neuropepv2")
+    vacuum_db("../db/neuropepv2_one.sqlite")
+    set_to_wal("../db/neuropepv2_one.sqlite")
+    
+    createdb_index("../db/neuropepv2_one.sqlite", 'neuropepv2')
+    check_index("../db/neuropepv2_one.sqlite" , 'neuropepv2')
+    
+    #add_to_db(df, "neuropepv2.sqlite")
+    #vacuum_db("neuropepv2.sqlite")

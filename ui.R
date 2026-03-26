@@ -164,11 +164,13 @@ ui <- page_fluid(
 		sidebar = sidebar(style="gap:0px",
 		  width = 380,
 		  h6(strong("Choose database"), ),
-		  radioButtons( "choosedb", choices = c("Peptipedia", "NeuroPep_v2"), inline = T, label= NULL),
+		  radioButtons( "choosedb", choices = c("Peptipedia", "Peptipedia|Tissue", "MultiPep", "MultiPep|Tissue", "NeuroPep_v2"), inline = T, label= NULL),
 		  hr(),
 		  h5(strong("Insert up to 2000 peptides")),
 		  radioButtons("searchtype", choices = c("Hamming", "Grantham", "Exact match", "Smaller matching Peptides", "Larger containing peptides"), inline = T, label = "Search type" ),
+		  br(),
 		  checkboxInput("inclpred", label= "Include predicted", value = T),
+		  #checkboxInput("tissue", label= "Use tissue data", value = F),
 		  br(),
 		  textAreaInput("inppeps", "Insert petides", height="300px"),
 		  p(style="padding:2px;"),
@@ -213,13 +215,14 @@ ui <- page_fluid(
 					sliderInput("prcent_of_worst", "Percent_of_worst interval", min = 0, max = 1, value = c(0,1), step = 0.01),
 					#hamming
 					sliderInput("score", "Score interval", min = 0, max = 1, value = c(0,1), step = 0.01),
+					sliderInput("predscore", "Prediction score interval", min = 0.5, max = 1, value = c(0.5,1), step = 0.01)
 				)
 			), 
 			layout_columns(
 					col_widths = c(4, 4, 4),
 					actionButton("apply_filter", "Apply filter", class="btn btn-info btn-sm btn-block"),
 					actionButton("clearfilter", "Clear filter", class="btn btn-primary btn-sm btn-block"),
-					p("")
+					checkboxInput("onlytis", label= "Tissue only", value = F)
 			)
 		  )
 		),
@@ -263,27 +266,38 @@ ui <- page_fluid(
   nav_panel(title = "Statistics", 
 	
 	layout_sidebar(
-		sidebar = sidebar(
+		sidebar = sidebar( style="gap:0px",
 		  width = 300,
 		  h6(strong("Choose database"), ),
-		  radioButtons( "choosedbstat", choices = c("Peptipedia", "NeuroPep_v2"), inline = T, label= NULL),
+		  #radioButtons( "choosedbstat", choices = c("Peptipedia", "MultiPep", "NeuroPep_v2"), inline = T, label= NULL),
+		  radioButtons( "choosedbstat", choices = c("Peptipedia", "Peptipedia|Tissue", "MultiPep", "MultiPep|Tissue", "NeuroPep_v2"), inline = T, label= NULL),
+		  br(),
+		  radioButtons("stattisorpred", choices=c("Both", "Tissue only", "Pred only"), inline = F, label= NULL),
+		  #radioButtons( "statthr", choices = c(">0.5", ">0.7", ">0.9"), inline = T, label= NULL),
+		  
 		  hr(),
 		  
 		  h5(strong("See the data")),
 			  layout_columns(
 				col_widths = c(12),
-				selectizeInput(inputId="biofunction",label = "Biofunction", multiple = F, choices = NULL), #allbionames
+				selectizeInput(inputId="biofunction",label = "Biofunctions", multiple = F, choices = NULL), #allbionames
 			  ),
 			  layout_columns(
 				col_widths = c(12),
-				selectizeInput(inputId="pepsize",label = "Peptide length", multiple = F, choices = NULL) #peplen
+				selectizeInput(inputId="pepsize",label = "Peptide lengths", multiple = F, choices = NULL) #peplen
+			  ),
+			  hr(),
+			  layout_columns(
+				col_widths = c(12),
+				selectizeInput(inputId="biofunction2",label = "Biofunctions across biofunctions", multiple = F, choices = NULL), #allbionames
 			  ),
 		),
 		
 		card(
+		  height = 500,
 		  style = "resize:vertical;",
 		  full_screen = TRUE,
-		  card_header("Plotly Figures"),
+		  card_header("Biofunctions and lengths"),
 		  card_body(
 			layout_columns(
 			col_widths = c(4,8),
@@ -292,6 +306,20 @@ ui <- page_fluid(
 			)
 		  )
 		),
+		
+		card(
+		  height = 500,
+		  style = "resize:vertical;",
+		  full_screen = TRUE,
+		  card_header("Biofunctions of classes"),
+		  card_body(
+			layout_columns(
+			col_widths = c(12),
+				plotlyOutput("bioacrossbio")
+			)
+		  )
+		)
+		
 	  )
 	
 	),
