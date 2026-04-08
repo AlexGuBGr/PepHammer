@@ -1,11 +1,11 @@
-
+# style = "background-color:#B8D6B8;",
 theme <- bs_theme(
   version = 5,
   bootswatch = NULL,  
   primary = "#1f2937", 
   secondary = "#6b7280",
   
-  bg = "#f1f5f9",
+  bg = "#FFFFFF",
   fg = "#0f172a",
   
   base_font = font_google("Inter"),
@@ -62,9 +62,14 @@ ui <- page_fluid(
 		}
 		
 		.card {
-		  border: none;
+		  background-color:#DFEBDF;
+		  border: 1px solid #1f2937;
 		  border-radius: 12px;
 		  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+		}
+		
+		.card-body {
+		  background-color:#FCFFFC;
 		}
 		
 		.card-header {
@@ -151,17 +156,18 @@ ui <- page_fluid(
       }
    
 		
-	  "))
+	  ")),
+	  
 	),
 
 
   theme = theme,
   title = "BioPepper",
   
-  navset_card_tab(
-  nav_panel(title = "Pep_Search", 
+  navset_card_tab( id="alltabs",
+  nav_panel(title = "Pep_Search", value = "t1",
 		layout_sidebar(
-		sidebar = sidebar(style="gap:0px",
+		sidebar = sidebar(style="gap:0px;background-color:#FCFFFC;",
 		  width = 380,
 		  h6(strong("Choose database"), ),
 		  radioButtons( "choosedb", choices = c("Peptipedia", "Peptipedia|Tissue", "MultiPep", "MultiPep|Tissue", "NeuroPep_v2"), inline = T, label= NULL),
@@ -215,7 +221,7 @@ ui <- page_fluid(
 					sliderInput("prcent_of_worst", "Percent_of_worst interval", min = 0, max = 1, value = c(0,1), step = 0.01),
 					#hamming
 					sliderInput("score", "Score interval", min = 0, max = 1, value = c(0,1), step = 0.01),
-					sliderInput("predscore", "Prediction score interval", min = 0.5, max = 1, value = c(0.5,1), step = 0.01)
+					sliderInput("predscore", "Prediction score interval", min = 0, max = 1, value = c(0,1), step = 0.01)
 				)
 			), 
 			layout_columns(
@@ -251,22 +257,25 @@ ui <- page_fluid(
 		  id="pepdistfound", 
 		  style="width=100%;height=400px;display:none;", 
 		  card_header("Biofunction Distribution"),
-			plotlyOutput("pepdistfoundplot")
+			div(style = "border: 2px solid #C0C0C0; border-radius: 5px;padding:1px;",
+				plotlyOutput("pepdistfoundplot")
+			)
 		),
 		card(
-		  id="pepholder", 
-		  style="width=100%;height=250px;",
+		  id="pepholder",
+		  style="width=100%;height=300px;",
 		  card_header("Specific peptides - select up to six"),
-		 #div(id="protholder", style="width=100%;height=400px;",
-			plotlyOutput("clicked")
+			div(id="pepholder2", style = "border: 2px solid #C0C0C0; border-radius: 5px;padding:1px;",
+				plotlyOutput("clicked")
+			)
 		)
 	  )
   ),
   
-  nav_panel(title = "Statistics", 
+  nav_panel(title = "Statistics", value = "t2",
 	
 	layout_sidebar(
-		sidebar = sidebar( style="gap:0px",
+		sidebar = sidebar( style="gap:0px;background-color:#FCFFFC;",
 		  width = 300,
 		  h6(strong("Choose database"), ),
 		  #radioButtons( "choosedbstat", choices = c("Peptipedia", "MultiPep", "NeuroPep_v2"), inline = T, label= NULL),
@@ -301,8 +310,12 @@ ui <- page_fluid(
 		  card_body(
 			layout_columns(
 			col_widths = c(4,8),
-			plotlyOutput("lenvsbio"),
-			plotlyOutput("biovslen")
+			div(style = "border: 2px solid #C0C0C0; border-radius: 5px;padding:1px;",
+				plotlyOutput("lenvsbio")
+			),
+			div(style = "border: 2px solid #C0C0C0; border-radius: 5px;padding:1px;",
+				plotlyOutput("biovslen")
+			)
 			)
 		  )
 		),
@@ -315,7 +328,9 @@ ui <- page_fluid(
 		  card_body(
 			layout_columns(
 			col_widths = c(12),
-				plotlyOutput("bioacrossbio")
+				div(style = "border: 2px solid #C0C0C0; border-radius: 5px;padding:1px;",
+					plotlyOutput("bioacrossbio")
+				)
 			)
 		  )
 		)
@@ -324,13 +339,15 @@ ui <- page_fluid(
 	
 	),
 	
-  nav_panel(title = "Cite", p("stuff")),
+  nav_panel(title = "Cite", value = "t3", p("stuff")),
   
   nav_spacer(),
   
   nav_menu(
     title = "Links",
-    nav_item(a("Peptipedia", href="https://app.peptipedia.cl/", target="_blank"))
+    nav_item(a("Peptipedia", href="https://app.peptipedia.cl/", target="_blank")),
+	nav_item(a("NeuroPep 2.0", href="https://www.sciencedirect.com/science/article/abs/pii/S0022283623005338", target="_blank")),
+	nav_item(a("MultiPep", href="https://cphbat.shinyapps.io/MultiPep/", target="_blank"))
   )
 )
   

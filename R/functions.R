@@ -446,6 +446,8 @@ update_filtering_options <- function(session, typo, dat, allbionames, predscore,
 		updateSliderInput(session, "distanceval", value=c(mi,ma), min=mi,max=ma, step=1)
 		ma <- max(dat[["Percent_of_worst"]])
 		mi <- min(dat[["Percent_of_worst"]])
+		ma <- ceiling(ma * 100) / 100
+		mi <- floor(mi * 100) / 100
 		updateSliderInput(session, "prcent_of_worst", value=c(mi,ma), min=mi,max=ma, step=0.01)
 		
 	} else if (typo == "Hamming") {
@@ -454,13 +456,13 @@ update_filtering_options <- function(session, typo, dat, allbionames, predscore,
 		updateSliderInput(session, "match", value=c(mi,ma), min=mi,max=ma, step=1)
 		ma <- max(dat[["Score"]])
 		mi <- min(dat[["Score"]])
-		ma <- floor(ma * 100) / 100
+		ma <- ceiling(ma * 100) / 100
 		mi <- floor(mi * 100) / 100
 		updateSliderInput(session, "score", value=c(mi,ma), min=mi,max=ma, step=0.01)
 	}
 	
 	if ( is.null(dat_init) ) {
-		updateSliderInput(session, "predscore", value=c(0.5,1), min=0.5, max=1, step=0.01)
+		updateSliderInput(session, "predscore", value=c(0,1), min=0, max=1, step=0.01)
 	} else {
 		updateSliderInput(session, "predscore", value=c(predscore[[1]],predscore[[2]]), min=predscore[[1]], max=predscore[[2]], step=0.01)
 	}
@@ -498,7 +500,7 @@ filtering_function <- function(dat, typo, allbionames, input, dbpath) {
 	if ( grepl("multipep", dbpath) ) { 
 		tmp_bio <- allbionames[!grepl("_PXD", allbionames)]
 		if ( length(tmp_bio) > 0 ) {
-			dat <- dat[ rowSums(dat[tmp_bio] > input$predscore[[1]] & dat[tmp_bio] <= input$predscore[[2]]) > 0, ]
+			dat <- dat[ rowSums(dat[tmp_bio] >= input$predscore[[1]] & dat[tmp_bio] <= input$predscore[[2]]) > 0, ]
 			#dat <- dat[ matrixStats::rowProds(dat[tmp_bio] > input$predscore[[1]] & dat[tmp_bio] <= input$predscore[[2]]) > 0, ]
 		}
 	}
@@ -890,11 +892,11 @@ make_found_biofunction_dist <- function(dat, allbionames, dbname, predscore) {
 
 
 
-bioactivity_of_single <- function(dfrow, allbionames, pep, dbname, predscore) {
+bioactivity_of_single <- function(dfrow, allbionames, pep, dbname, predscore, subb) {
 
 
 	if ( grepl("multipep", dbname) ) {
-		datbool <- dfrow > predscore[[1]] & dfrow <= predscore[[2]]
+		datbool <- dfrow >= max(c( 0.5, predscore[[1]] )) & dfrow <= predscore[[2]]
 		dfrow[datbool] <- 1
 	} else {
 		datbool <- dfrow > 0
@@ -912,20 +914,20 @@ bioactivity_of_single <- function(dfrow, allbionames, pep, dbname, predscore) {
     fig <- fig %>% layout(
         #title = pep, 
         showlegend=FALSE,
-        margin = list(l = 5, r = 5, b = 5, t = 20),
+        margin = list(l = 0, r = 0, b = 5, t = 20),
         annotations = list(
             list(
                 text = pep,
                 x = 0.5,
-                y = 1.15,
-                xref = "paper",
-                yref = "paper",
+				y = 1.10-subb,
+				xref = "paper",
+				yref = "paper",
                 showarrow = FALSE,
                 xanchor = "center"
             )
         ),
-        xaxis = list(title = "Bioactivities", showticklabels = FALSE),
-        yaxis = list(title = "Count") 
+        xaxis = list(title = pep, showticklabels = FALSE),#, side = "top"),
+        yaxis = list(title = "Count", showticklabels = FALSE) 
         
     )
     fig
@@ -937,14 +939,18 @@ bioactivity_of_rows <- function(df, allbionames, dbname, predscore) {
 	allbionames <- allbionames[ allbionames %in% colnames(df)]
 	nrw <- nrow(df)
 	nr <- ceiling(nrw/2)
-
-	shinyjs::runjs(paste0("document.getElementById('pepholder').style.height = '",210 * nr ,"px';"))
-
-	subplot( lapply( 1:nrw, function(x) {bioactivity_of_single(unname(unlist(df[x,][allbionames])), allbionames, df[["Found"]][[x]], dbname, predscore ) } ) ,
+	addjust <- c(0, 0, 0.05, 0.05, 0.1, 0.1)
+	
+	csize <- x <- ifelse(nr == 1, 300, 210*nr+70)
+	shinyjs::runjs(paste0("document.getElementById('pepholder').style.height = '", csize ,"px';"))
+	shinyjs::runjs(paste0("document.getElementById('pepholder2').style.height = '",205 * nr ,"px';"))
+	shinyjs::runjs(paste0("document.getElementById('clicked').style.height = '",200 * nr ,"px';"))
+	
+	subplot( lapply( 1:nrw, function(x) {bioactivity_of_single(unname(unlist(df[x,][allbionames])), allbionames, df[["Found"]][[x]], dbname, predscore, addjust[[x]] ) } ) ,
            nrows = nr, 
            titleX = F,
            titleY = F,
-           margin = c(0.035,0.035,0.05,0.05)
+           margin = c(0.035,0.035,0.05,0.05)# * 1/nr
            ) %>% plotly::config(toImageButtonOptions = list(format= 'svg', # one of png, svg, jpeg, webp
                                                filename= 'pepbiofigs',
                                                height= 200*nr, # = NULL to download img as is

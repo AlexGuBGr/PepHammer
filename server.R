@@ -24,53 +24,6 @@ arrange_db_tbls <- function(inputchoosedb, inputinclpred, dbx, tablx, allbioname
 		dbx( dbselector[[inputchoosedb]] )
 		tablx( tableselector[[inputchoosedb]])
 		allbionamesx( colnameselector[[inputchoosedb]] )
-
-
-		#if (inputchoosedb == "Peptipedia" ) {
-		#	dbx( dbselector[[inputchoosedb]] )
-		#	tablx( "peptipedia" )
-		#	allbionamesx(allbionames_pep)
-			
-		#} else if (inputchoosedb == "Peptipedia|Tissue" ) { 
-			
-		#	dbx( dbselector[[inputchoosedb]] )
-		#	#tablx( "peptipedia_tissue" )
-		#	tablx( tableselector[[inputchoosedb]])
-		#	allbionamesx( colnameselector[inputchoosedb]] )
-			#allbionamesx( c( allbionames_pep, tissues ) )
-			
-			#if (inputinclpred == T) {
-			#	allbionamesx( c( allbionamesx(), tissues ) )
-			#} else {
-			#	allbionamesx( c( tissues ) )
-			#}
-			
-		#} else if (inputchoosedb == "NeuroPep_v2") {
-			
-		#	dbx( dbselector[[inputchoosedb]] )
-		#	tablx( "neuropepv2" )
-		#	allbionamesx(familynames)
-			
-			
-		#} else if (inputchoosedb == "MultiPep") {
-		#	dbx( dbselector[[inputchoosedb]] )
-		#	tablx( "pepti_multipep" )
-		#	allbionamesx(mulpclass)
-
-			
-		#} else if (inputchoosedb == "MultiPep|Tissue") {
-		
-		#	dbx( dbselector[[inputchoosedb]] )
-		#	tablx( "multipep_tissue" )
-		#	allbionamesx( c( mulpclass, tissues) )
-		
-			#if (inputinclpred == T) {
-			#	allbionamesx( c( allbionamesx(), tissues ) )
-			#} else {
-			#	allbionamesx( c( tissues ) )
-			#}
-
-		#}
 }
 
 
@@ -120,16 +73,14 @@ shinyServer(function(input, output, session) {
 	})
 
 	observeEvent(input$choosedbstat,{
-		#keybio(NULL)
-		#keylen(NULL)
 		updateSelectizeInput(session, "pepsize", choices = c("-"))
 		updateSelectizeInput(session, "biofunction", choices = c("-"))
 		updateSelectizeInput(session, "biofunction2", choices = c("-"))
 	}, priority=1)
 	
 	
-	observeEvent( c(input$choosedbstat, input$inclpredstat), {
-		
+	observeEvent( c(input$choosedbstat, input$inclpredstat, input$alltabs), {
+		req( input$alltabs == "t2" )
 		arrange_db_tbls(input$choosedbstat, input$inclpredstat, statdb, stattabl, allbionames_stat)
 		
 		if ( grepl("Tissue", input$choosedbstat)) {
@@ -137,17 +88,6 @@ shinyServer(function(input, output, session) {
 		} else {
 			stattablfig( c("length_bio_dist", "bioact_vs_bioact") )
 		}
-		
-		#if ( grepl("multipep", statdb() ) ) {
-		#	shinyjs::show("statthr")
-		#	updateSelectizeInput(session, "pepsize", choices = c("All", load_columns_from_table("Pep_length", paste0( stattablfig(), stringr::str_replace( stringr::str_replace(input$statthr, ">", ""), "[.]", "") ) , statdb() )[[1]] ) )
-		#} else if ( grepl("neuropepv2", statdb()) ) {
-		#	shinyjs::hide("statthr")
-		#	updateSelectizeInput(session, "pepsize", choices = c("All", load_columns_from_table("Pep_length", paste0( stattablfig(), "05" ), statdb() )[[1]] ) )
-		#} else {
-		#	shinyjs::hide("statthr")
-		#	updateSelectizeInput(session, "pepsize", choices = c("All", load_columns_from_table("Pep_length", stattablfig(), statdb() )[[1]] ) )
-		#}
 		updateSelectizeInput(session, "pepsize", choices = c("All", load_columns_from_table("Pep_length", stattablfig()[[1]], statdb() )[[1]] ) )
 		updateSelectizeInput(session, "biofunction", choices = c("All", allbionames_stat()) )
 		updateSelectizeInput(session, "biofunction2", choices = allbionames_stat() )
@@ -194,11 +134,14 @@ shinyServer(function(input, output, session) {
 		subsetModal(session)
 	})
 	
-
+	is_float <- function(x) {
+	  is.numeric(x) && !is.integer(x)
+	}
 	output$foundpeps <- DT::renderDataTable(
 		DT::datatable({ dat() },
 					options = list(ScrollX=TRUE)
-	  ), server = TRUE)
+	  ) %>% DT::formatRound(purrr::map_lgl(.$x$data, is_float), digits = 2) , server = TRUE)
+			#DT::formatSignif(purrr::map_lgl(.$x$data, is.numeric), digits = 2), server = TRUE)
 	  # %>% formatRound(purrr::map_lgl(.$x$data, is.numeric), digits = 3)
 
 	observeEvent(input$clear, {
@@ -265,18 +208,25 @@ shinyServer(function(input, output, session) {
 			shinyjs::enable("filtering")
 			
 			if (searchtypeval() %in% c("Exact match", "Smaller matching Peptides", "Larger containing peptides")) {
-				shinyjs::hide("divboth")
+				#shinyjs::hide("divboth")
+				shinyjs::hide("distanceval")
+				shinyjs::hide("prcent_of_worst")
+				shinyjs::hide("score")
+				shinyjs::hide("match")
+				
 			} else {
-				shinyjs::show("divboth")
+				#shinyjs::show("divboth")
 				if ( searchtypeval() == "Hamming") {
 					shinyjs::hide("distanceval")
 					shinyjs::hide("prcent_of_worst")
 					shinyjs::show("score")
-				} else {
+					shinyjs::show("match")
+				} else if (searchtypeval() == "Grantham") {
 					shinyjs::show("distanceval")
 					shinyjs::show("prcent_of_worst")
 					shinyjs::hide("score")
-				}
+					shinyjs::show("match")
+				} 
 			}
 
 		update_filtering_options(session, searchtypeval(), dat(), allbionames(), input$predscore, dat_init())
