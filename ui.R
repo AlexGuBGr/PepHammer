@@ -158,21 +158,24 @@ ui <- page_fluid(
 		
 	  ")),
 	  
+	  
 	),
 
 
   theme = theme,
-  title = "BioPepper",
+  title = "PepHammer",
   
   navset_card_tab( id="alltabs",
   nav_panel(title = "Pep_Search", value = "t1",
 		layout_sidebar(
 		sidebar = sidebar(style="gap:0px;background-color:#FCFFFC;",
 		  width = 380,
+		  
+		  div(style="padding:2px;"),
 		  h6(strong("Choose database"), ),
 		  radioButtons( "choosedb", choices = c("Peptipedia", "Peptipedia|Tissue", "MultiPep", "MultiPep|Tissue", "NeuroPep_v2"), inline = T, label= NULL),
 		  hr(),
-		  h5(strong("Insert up to 2000 peptides")),
+		  h5(strong("Insert up to 10000 peptides")),
 		  radioButtons("searchtype", choices = c("Hamming", "Grantham", "Exact match", "Smaller matching Peptides", "Larger containing peptides"), inline = T, label = "Search type" ),
 		  br(),
 		  checkboxInput("inclpred", label= "Include predicted", value = T),
@@ -339,9 +342,23 @@ ui <- page_fluid(
 	
 	),
 	
-  nav_panel(title = "Cite", value = "t3", p("stuff")),
+  nav_panel(title = "Cite", value = "t3", 
+  
+  h2("Dear researcher,", style = "margin-bottom: 5px; line-height: 0.5;"),
+  h4("if you find PepHammer useful, please cite:", a("PepHammer", href="https://www.biorxiv.org/content/10.64898/2026.04.13.718252v1", target="_blank" ), style = "margin-top: 0px; line-height: 0.5;"),
+  #h4(a("PepHammer", href="https://www.biorxiv.org/content/10.64898/2026.04.13.718252v1", target="_blank" ), style = "margin-top: 0px; line-height: 0.5;")
+  
+  ),
   
   nav_spacer(),
+  
+  nav_menu(
+    title = "Help and test data",
+    nav_item(actionLink("help1", "How to search?")),
+	nav_item(actionLink("help2", "How to filter?")),
+	nav_item(actionLink("help3", "Statistics?")),
+	nav_item(downloadLink("download_txt", "Try 'human_milk.txt'?"))
+  ),
   
   nav_menu(
     title = "Links",

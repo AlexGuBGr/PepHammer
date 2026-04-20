@@ -19,6 +19,29 @@ subsetModal <- function(session) {
   }
 
 
+showsimg <- function(session, imgname) {
+  ns <- session$ns
+  showModal(modalDialog(
+    title = HTML(paste0("<h2>",names(imgname),"</h2> ")),
+    {
+      fluidRow(
+        column(11,
+               tags$figure(
+                 tags$img(
+                   id = "currentimage",
+                   src = imgname[[1]],
+                   #height = "60%"
+                   width="100%"
+                   #style="cursor:pointer;"
+                 ))
+               ),
+      )
+        
+
+    }, size = "xl", easyClose = T, footer=modalButton("Dismiss")))
+}
+
+
 arrange_db_tbls <- function(inputchoosedb, inputinclpred, dbx, tablx, allbionamesx) {
 
 		dbx( dbselector[[inputchoosedb]] )
@@ -50,12 +73,26 @@ shinyServer(function(input, output, session) {
 	allbionames <- reactiveVal()
 	tabl <- reactiveVal()
 	db <- reactiveVal()
+	
+	temp <- reactiveVal() 
 
 	  observe({
 		for ( i in 1:2 ) {gc()}
 		shiny::invalidateLater(10000)
 	  })
 
+
+	observeEvent(input$help1, {
+		showsimg(session, list("How to search:" = "fig1.png"))
+	})
+
+	observeEvent(input$help2, {
+		showsimg(session, list("How to filter:" = "fig2.png"))
+	})
+
+	observeEvent(input$help3, {
+		showsimg(session, list("Plot the data:" = "fig3.png"))
+	})
 
 	observeEvent(c(input$choosedb, input$inclpred ), {
 	
@@ -79,8 +116,9 @@ shinyServer(function(input, output, session) {
 	}, priority=1)
 	
 	
-	observeEvent( c(input$choosedbstat, input$inclpredstat, input$alltabs), {
-		req( input$alltabs == "t2" )
+	observeEvent( c(input$choosedbstat, input$inclpredstat, input$alltabs), { # this is a dum way
+		req( input$alltabs == "t2" && !is.null(temp) )
+		temp(1)
 		arrange_db_tbls(input$choosedbstat, input$inclpredstat, statdb, stattabl, allbionames_stat)
 		
 		if ( grepl("Tissue", input$choosedbstat)) {
@@ -173,6 +211,16 @@ shinyServer(function(input, output, session) {
 		  writexl::write_xlsx(dat(), file)
 		}
 	  )
+
+	output$download_txt <- downloadHandler(
+	  filename = function() {
+		"human_milk.txt"
+	  },
+	  content = function(file) {
+		file.copy("db/human_milk.txt", file)
+	  }
+	)
+
 
 	foundpepsproxy <- DT::dataTableProxy("foundpeps")
 

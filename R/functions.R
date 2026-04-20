@@ -1,4 +1,4 @@
-topnr <- 5
+topnr <- 3
 
 
 extend_grantham <- function(G) {
@@ -565,24 +565,24 @@ get_data <- function(starter, dat, strings, compat, aa_levels, allbionames, sear
 			easyClose = F,
 			footer = NULL
 	))
-	# maybe move to Future
-	strings <- stringr::str_split_1(strings, "\n")
-	#if ( length(strings) > 2000) {return_message(c())}
-	strings <- strings[duplicated(strings) == F]
-	return_message(strings)
-	strings <- check_length(strings, dbpath)
-	return_message(strings)
-	strings <- strings[sapply(strings, function(x){ all(stringr::str_split_fixed(x, "", nchar(x)) %in% aa_levels) }, USE.NAMES = F)]
-	return_message(strings)
-		#update the textinut area
 
-
-
-	starter( max( c(length(strings)/10, 6) ) )
+	starter(  min( c( max( c(stringr::str_count(strings, "\n")/10, 6) ), 300 ) ) )
 	future_promise({
       source("R/dbfunctions.R")
       source("R/functions.R")
 	  	
+		strings <- stringr::str_split_1(strings, "\n")
+		if ( length(strings) > 10000) {return(NULL)}
+		strings <- strings[duplicated(strings) == F]
+		#return_message(strings)
+		if ( length(strings) == 0) {return(NULL)}
+		strings <- check_length(strings, dbpath)
+		#return_message(strings)
+		if ( length(strings) == 0) {return(NULL)}
+		strings <- strings[sapply(strings, function(x){ all(stringr::str_split_fixed(x, "", nchar(x)) %in% aa_levels) }, USE.NAMES = F)]
+		#return_message(strings)
+		if ( length(strings) == 0) {return(NULL)}
+		
 		if (length(strings) > 0) {
 			##strings <- sapply(strings, function(x){ tmp <- stringr::str_split_fixed(x, "", nchar(x)); tmp[!(tmp %in% aa_levels)] <- "_"; paste(tmp,collapse = "") }, USE.NAMES = F)
 			strings <- split(strings, nchar(strings))
@@ -841,7 +841,7 @@ make_overlay_bar_bio_vs_bio <- function(dbpath, tablename, biof, tissues, tisorp
                           yaxis = list(title = "Count"),
                           margin = list(l = 5, r = 5, b = 5, t = 60))
     fig <- plotly::config(fig, toImageButtonOptions = list(format= 'svg', # one of png, svg, jpeg, webp
-                                                                            filename= 'len_vs_bio',
+                                                                            filename= 'bio_vs_bio',
                                                                             height= NULL,#400, # = NULL to download img as is
                                                                             width= NULL,#600,  # = NULL to download img as is
                                                                             scale= 1 ),
@@ -865,7 +865,9 @@ make_found_biofunction_dist <- function(dat, allbionames, dbname, predscore) {
 	nr <- nrow(dat)
     allbionames <- allbionames[ allbionames %in% colnames(dat)]
 	if ( grepl("multipep", dbname) ) {
-		dat <- unname( colSums( dat[allbionames] > predscore[[1]] & dat[allbionames] <= predscore[[2]]) )
+		dat <- colSums( dat[allbionames] >= max(c( 0.5, predscore[[1]] )) & dat[allbionames] <= predscore[[2]]) 
+		allbionames <- names(dat)[dat > 0 ]
+		dat <- unname( dat[dat > 0] )
 	} else {
 		dat <- unname(colSums(dat[allbionames]))
 	}

@@ -8,7 +8,7 @@ library(promises)
 library(future.callr)
 #library(progressr)
 
-workers <- 6
+workers <- 10
 plan(callr, workers = workers)
 
 #progressr::handlers(global = TRUE)
