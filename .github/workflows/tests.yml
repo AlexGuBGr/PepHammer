@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        r-version: ["release", "oldrel-1"]
+        r-version: ["4.5.2"]
     steps:
       - uses: actions/checkout@v4
       - uses: r-lib/actions/setup-r@v2
