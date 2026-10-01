@@ -27,6 +27,7 @@ get_row_count <- function(table, dbpath) {
 get_column_sums <- function(table, columns, dbpath) {
     
     con <- DBI::dbConnect(RSQLite::SQLite(), dbpath)
+    on.exit(DBI::dbDisconnect(con), add = TRUE)
     set_busytimeout(con, time=10000)
     
     stopifnot(DBI::dbIsValid(con))
