@@ -3,7 +3,7 @@
 Search and compare multiple peptides against a comprehensive database of bioactive peptides.
 This repository contains the Shiny app only.
 
-[![tests](https://github.com/AlexGuBGr/BioHamming/actions/workflows/tests.yml/badge.svg)](https://github.com/AlexGuBGr/BioHamming/actions/workflows/tests.yml)
+[![tests](https://github.com/AlexGuBGr/PepHammer/actions/workflows/tests.yml/badge.svg)](https://github.com/AlexGuBGr/PepHammer/actions/workflows/tests.yml)
 
 ## Databases
 
