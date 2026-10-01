@@ -16,7 +16,7 @@ test_that("grantham matrix has known published values", {
 test_that("extend_grantham adds X, B, Z and J", {
     G <- grantham_distance_matrix()
     E <- extend_grantham(G)
-    expect_equal(dim(E), c(23, 23))
+    expect_equal(dim(E), c(24, 24))
     expect_true(all(c("X", "B", "Z", "J") %in% rownames(E)))
     expect_equal(E["X", "X"], mean(G))
     expect_equal(E["X", "A"], mean(G[, "A"]))
