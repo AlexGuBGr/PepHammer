@@ -116,7 +116,7 @@ def make_table(dct, cats, dbpath, tablename):
     ze["peptide"] = dctnames
     ze["Length"] = ln
     
-    save_table_to_db(df, dbpath, tablename)
+    save_table_to_db(ze, dbpath, tablename)
 
 
 

@@ -90,7 +90,7 @@ def prune_peps(dbname, prcnt=0.2):
         tmptable = get_columns_from_db(dbname,i,["peptide"])
         n = []
         for ii in tmptable.peptide:
-            tmp = ii.count("X") / float(i)
+            tmp = ii.count("X") / len(ii)
             if tmp > prcnt:
                 n.append(ii)
         print(i, " - deleting", len(n), "rows" ) 
